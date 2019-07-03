@@ -12,3 +12,7 @@ Request
 
     curl http://0.0.0.0:8080/aa/bb/cc
     {'temperature': 30}
+
+Run docker image
+
+    docker run --rm --name morgue -p 0.0.0.0:8080:8080 juanpabloaj/morgue:latest
