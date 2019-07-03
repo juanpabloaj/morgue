@@ -1,6 +1,6 @@
 ## Morgue
 
-To store and request body responses.
+To store and request response bodies.
 
 It uses the URI as the storage key.
 
