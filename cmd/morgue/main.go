@@ -7,34 +7,41 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 )
 
-type readOp struct {
+type readBody struct {
 	uri  string
-	resp chan string
+	resp chan Response
 }
 
-type writeOp struct {
-	uri  string
-	body string
-	resp chan bool
+type storeBody struct {
+	response Response
+	resp     chan bool
 }
 
-var reads = make(chan readOp)
-var writes = make(chan writeOp)
+type Response struct {
+	uri       string
+	body      string
+	sleepTime int
+}
+
+var reads = make(chan readBody)
+var writes = make(chan storeBody)
 
 func bodiesStorage() {
 
-	var bodies = make(map[string]string)
+	var bodies = make(map[string]Response)
 
 	for {
 		select {
 		case read := <-reads:
 			read.resp <- bodies[read.uri]
 		case write := <-writes:
-			bodies[write.uri] = write.body
+			bodies[write.response.uri] = write.response
 			write.resp <- true
 		}
 	}
@@ -47,12 +54,16 @@ func showBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	read := readOp{
+	read := readBody{
 		uri:  requestURI,
-		resp: make(chan string)}
+		resp: make(chan Response)}
 	reads <- read
 
-	io.WriteString(w, <-read.resp)
+	response := <-read.resp
+
+	time.Sleep(time.Duration(response.sleepTime) * time.Millisecond)
+
+	io.WriteString(w, response.body)
 }
 
 func saveBody(w http.ResponseWriter, r *http.Request) {
@@ -68,9 +79,18 @@ func saveBody(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%v", err)
 	}
 
-	write := writeOp{
-		uri:  requestURI,
-		body: string(body),
+	sleepTime := 0
+	auxSleepTime, err := strconv.Atoi(r.Header.Get("morgue-set-sleep-time"))
+	if err == nil {
+		sleepTime = auxSleepTime
+	}
+
+	write := storeBody{
+		response: Response{
+			uri:       requestURI,
+			sleepTime: sleepTime,
+			body:      string(body),
+		},
 		resp: make(chan bool)}
 	writes <- write
 	<-write.resp
