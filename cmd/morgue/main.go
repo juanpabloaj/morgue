@@ -24,9 +24,10 @@ type storeBody struct {
 }
 
 type Response struct {
-	uri       string
-	body      string
-	sleepTime int
+	uri         string
+	body        string
+	contentType string
+	sleepTime   int
 }
 
 var reads = make(chan readBody)
@@ -52,8 +53,6 @@ func showBody(w http.ResponseWriter, r *http.Request) {
 	requestURI := r.URL.RequestURI()
 	log.Printf("show %s", requestURI)
 
-	w.Header().Set("Content-Type", "application/json")
-
 	read := readBody{
 		uri:  requestURI,
 		resp: make(chan Response)}
@@ -62,6 +61,8 @@ func showBody(w http.ResponseWriter, r *http.Request) {
 	response := <-read.resp
 
 	time.Sleep(time.Duration(response.sleepTime) * time.Millisecond)
+
+	w.Header().Set("Content-Type", response.contentType)
 
 	io.WriteString(w, response.body)
 }
@@ -85,17 +86,23 @@ func saveBody(w http.ResponseWriter, r *http.Request) {
 		sleepTime = auxSleepTime
 	}
 
+	contentType := r.Header.Get("Content-type")
+	if contentType == "" {
+		contentType = "application/json"
+	}
+
 	write := storeBody{
 		response: Response{
-			uri:       requestURI,
-			sleepTime: sleepTime,
-			body:      string(body),
+			uri:         requestURI,
+			sleepTime:   sleepTime,
+			body:        string(body),
+			contentType: contentType,
 		},
 		resp: make(chan bool)}
 	writes <- write
 	<-write.resp
 
-	io.WriteString(w, `{"message": "body saved"}`)
+	io.WriteString(w, `{"message": "response saved"}`)
 }
 
 func NewRouter() *mux.Router {

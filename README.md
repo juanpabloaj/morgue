@@ -4,9 +4,9 @@ To store and request response bodies.
 
 It uses the URI as the storage key.
 
-Store
+Store response, with JSON as content type
 
-    curl -vv -XPUT -d "{'temperature': 30}" http://0.0.0.0:8080/aa/bb/cc
+    curl -v -XPUT -H 'Content-Type:application/json' -d "{'temperature': 30}" 0.0.0.0:8080/aa/bb/cc
 
 Request
 
